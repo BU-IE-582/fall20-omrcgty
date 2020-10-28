@@ -1,0 +1,31 @@
+---
+title: "Interesting R Examples"
+author: "Ömer Çağatay Talikacı - IE582 - Fall 2020"
+---
+```{r,echo=FALSE,results="hide"}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+1. [Exploring Survival on the Titanic](https://www.kaggle.com/mrisdal/exploring-survival-on-the-titanic)
+
+    This example is important because it is an R Notebook on Titanic data set. Titanic is considered as one of the Data Science 101 data set and this notebook provides a good exploratory data analysis. It is also a Kaggle Kernel, which is a very good source for this kind of example R codes. The notebook also covers feature engineering, missing data imputation and modeling.
+
+2.[Analyzing The Lord of the Rings data](https://www.kaggle.com/xvivancos/analyzing-the-lord-of-the-rings-data)
+
+  In this project two data sets related to The Lord of the Rings are analyzed: one containing the scripts from the movies, and the other one with information about the characters of the trilogy (gender, height, race, etc.)
+  
+3.[New York City Taxi Trip Duration](https://www.kaggle.com/c/nyc-taxi-trip-duration)
+
+  In this example, the duration of taxi trip in New York city is predicted by using the different datas such as pickup time, geo-coordinates, number of passengers, and several other variables.
+  
+4.[House prices: Lasso, XGBoost, and a detailed EDA](https://www.kaggle.com/erikbruin/house-prices-lasso-xgboost-and-a-detailed-eda)
+
+ In this example, detailed examinations and some modelings are given to Kaggle competition about predicting the final price of each residential homes in Ames, Iowa.
+ 
+5.[Getting Data from Twitter](https://www.kaggle.com/xvivancos/tutorial-getting-data-from-twitter)
+ 
+ Step by step, capturing data from Twitter.
+
+
+
