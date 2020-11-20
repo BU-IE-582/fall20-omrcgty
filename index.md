@@ -6,4 +6,4 @@
 
 ## Homework 1 (November 20)
 
-[Here](files/Hw1.html) is my homework 1. You can reach the codes as rmd file [here](files/Hw1.rmd).
+[Here](files/Hw1.html) is my homework 1. You can reach the codes as rmd file [here](https://github.com/BU-IE-582/fall20-omrcgty/blob/gh-pages/files/Hw1.Rmd).
