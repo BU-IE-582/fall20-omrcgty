@@ -1,0 +1,520 @@
+
+Ömer Çağatay Talikacı
+20.11.2020
+
+# **TASK.1**
+
+# Introduction
+
+  In this work, goals scored in the last three season of English Premier League 
+will be visualized with histogram graphs. Then we will check whether the Poisson 
+distribution match with our data.
+  First we will start with importing data and simplifying it.
+  
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+library(ggplot2)
+library(dplyr)
+library(stats)
+library(date)
+library(patchwork)
+S20=read.csv("C:/Users/ÖmerÇağatay/Desktop/Ie 582/premier/E20.csv")
+S19=read.csv("C:/Users/ÖmerÇağatay/Desktop/Ie 582/premier/E19.csv")
+S18=read.csv("C:/Users/ÖmerÇağatay/Desktop/Ie 582/premier/E18.csv")
+matches<-bind_rows(S20,S19,S18)
+#selecting the necessary columns for the task
+matches %>% select(c(6:7))->goal_scores
+#To show goal years in the histograms I will take year information from Date column.
+
+Da<-format(as.Date(matches$Date,format="%d/%m/%Y"),"%Y")
+
+#Defining M as Home goals- Away Goals 
+M<-matches["FTHG"]-matches["FTAG"]
+names(M)[1]<-"Ho_Aw"
+
+#Collecting all necessary informatin under one data frame
+neces<-bind_cols(goal_scores,Da,M)
+names(neces)[c(1,2,3)]<-c("Home_Goals","Away_Goals","Years")
+```
+
+## HISTOGRAMS
+
+* *1.* Histogram of Home Goals
+
+```{r}
+p1<-ggplot(data=neces,aes(x=Home_Goals,col=Years,fill=Years))+geom_histogram(binwidth = 0.5)+ylab("Number of Games")+xlab("Home Goals")
+p1
+```
+
+* *2.* Histogram of Away Goals
+
+```{r}
+p2<-ggplot(data=neces,aes(x=Away_Goals,col=Years,fill=Years))+geom_histogram(binwidth = 0.5)+ylab("Number of Games")+xlab("Away Goals")
+p2
+```
+
+* *3.* Histogram of Home Goals-Away Goals
+
+```{r}
+p3<-ggplot(data=neces,aes(x=Ho_Aw,col=Years,fill=Years))+geom_histogram(binwidth = 0.5)+ylab("Number of Games")+xlab("Home Goals-Away Goals")
+p3
+```
+
+ + Calculating and Plotting Poisson Distribution of Home Goals and Away Goals
+  
+```{r}
+hm<-mean(neces$Home_Goals)
+am<-mean(neces$Away_Goals)
+trails<-length(neces$Home_Goals)
+
+pois_home<-function(x){
+  return(dpois(x,lambda = hm)*trails)
+  }
+pois_away<-function(x){
+  return(dpois(x,lambda = am)*trails)
+}
+p4<-ggplot(neces,aes(x=Home_Goals,fill=Years)) + geom_histogram(binwidth = 0.5,show.legend = T)+theme_bw()+
+    geom_line(aes(y=pois_home(Home_Goals))) +
+  labs(title = "Poisson Distribution of Home Goals",
+       x = 'Away Goals',
+       y = 'Number of Games ')
+p5<-ggplot(neces,aes(x=Away_Goals,fill=Years)) + geom_histogram(binwidth = 0.5,show.legend = T)+theme_bw()+
+    geom_line(aes(y=pois_away(Away_Goals))) + 
+     labs(title = "Poisson Distribution of Away Goals",
+       x = 'Away Goals',
+       y = 'Number of Games ')
+ 
+p4
+p5
+```
+
+# **TASK.2**
+
+* Task 2.1
+
+ Calculating probabilities from odds offered by different bookmakers.
+ (Bet365,Bet and Win, IW and Pinnacle are chosen)
+
+```{r,warning=F,message=F}
+matches %>% select(6,7,c(25:36))->odds
+
+Home_probs_B365<-1/odds["B365H"]
+
+Draw_probs_B365<-1/odds["B365D"]
+Away_probs_B365<-1/odds["B365A"]
+
+Home_probs_BW<-1/odds["BWH"]
+Draw_probs_BW<-1/odds["BWD"]
+Away_probs_BW<-1/odds["BWA"]
+
+Home_probs_IW<-1/odds["IWH"]
+Draw_probs_Iw<-1/odds["IWD"]
+Away_probs_IW<-1/odds["IWA"]
+
+Home_probs_PS<-1/odds["PSH"]
+Draw_probs_PS<-1/odds["PSD"]
+Away_probs_PS<-1/odds["PSA"]
+
+probs<-bind_cols(Home_probs_B365,Draw_probs_B365,Away_probs_B365,Home_probs_BW,Draw_probs_BW
+                 ,Away_probs_BW,Home_probs_IW,Draw_probs_Iw,Away_probs_IW,Home_probs_PS,Draw_probs_PS,Away_probs_PS)
+
+#alternative code that creates data frame with goals, 
+probs_w_ods<- odds %>% mutate(Home_probs_B365 = 1/B365H,
+                             Draw_probs_B365=1/B365D,
+      Away_probs_B365=1/B365A,
+
+      Home_probs_BW=1/BWH,
+      Draw_probs_BW=1/BWD,
+      Away_probs_BW=1/BWA,
+
+      Home_probs_IW=1/IWH,
+      Draw_probs_Iw=1/IWD,
+      Away_probs_IW=1/IWA,
+
+      Home_probs_PS=1/PSH,
+      Draw_probs_PS=1/PSD,
+      Away_probs_PS=1/PSA)
+
+library(rmarkdown)
+paged_table(probs)
+
+```
+
+* Task 2.2 
+ 
+ Calculating Probabilities with Normalization Formula;
+ 
+ $$\left[\begin{array}{l}
+\mathrm{P}(\text { home }) \\
+\mathrm{P}(\text { draw }) \\
+\mathrm{P}(\text { away })
+\end{array}\right]=\left[\begin{array}{l}
+1 / \mathrm{odds}_{1} \\
+1 / \mathrm{ods}_{X} \\
+1 / \mathrm{odds}_{2}
+\end{array}\right] \cdot \frac{1}{\sum_{i \in\{1, X, 2\}} 1 / \mathrm{odds}_{i}}$$
+
+
+```{r}
+sm_mbet365<-probs["B365H"]+probs["B365D"]+probs["B365A"]
+sm_bw<-probs["BWH"]+probs["BWD"]+probs["BWA"]
+sm_iw<-probs["IWH"]+probs["IWD"]+probs["IWA"]
+sm_ps<-probs["PSH"]+probs["PSD"]+probs["PSA"]
+probsums<-bind_cols(sm_mbet365,sm_bw,sm_iw,sm_ps)
+names(probsums)[c(1,2,3,4)]=c("Sum_Bet365","Sum_BW","Sum_IW","Sum_PS")
+last<-bind_cols(probs_w_ods,probsums)
+lastdata<-last%>%mutate(Norm_Home_probs_B365 =Home_probs_B365/Sum_Bet365,
+                         Norm_Draw_probs_B365=Draw_probs_B365/Sum_Bet365,
+      Norm_Away_probs_B365=Away_probs_B365/Sum_Bet365,
+
+     Norm_Home_probs_BW=Home_probs_BW/Sum_BW,
+      Norm_Draw_probs_BW=Draw_probs_BW/Sum_BW,
+      Norm_Away_probs_BW=Away_probs_BW/Sum_BW,
+
+      Norm_Home_probs_IW=Home_probs_IW/Sum_IW,
+      Norm_Draw_probs_Iw=Draw_probs_Iw/Sum_IW,
+      Norm_Away_probs_IW=Draw_probs_Iw/Sum_IW,
+
+      Norm_Home_probs_PS=Home_probs_PS/Sum_PS,
+      Norm_Draw_probs_PS=Home_probs_PS/Sum_PS,
+      Norm_Away_probs_PS=Home_probs_PS/Sum_PS
+                        )
+paged_table(lastdata)
+
+```
+
+* Task 2.3
+
+ Constructing a plot of P(home win) – P(away win) on x-axis and P (tie) on y-axis with first
+probability calculation.
+
+```{r}
+
+p6<-ggplot(lastdata,aes(x=Home_probs_B365-Away_probs_B365,y=Draw_probs_B365))+
+  geom_point(col="#f6b93b",size=0.7)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Bet365")
+p7<-ggplot(lastdata,aes(x=Home_probs_BW-Away_probs_BW,y=Draw_probs_BW))+
+  geom_point(col="#e55039",size=0.7)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Bet And Win")
+p8<-ggplot(lastdata,aes(x=Home_probs_IW-Away_probs_IW,y=Draw_probs_Iw))+
+  geom_point(col="#4a69bd",size=0.7)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("IW Bet")
+p9<-ggplot(lastdata,aes(x=Home_probs_PS-Away_probs_PS,y=Draw_probs_PS))+
+  geom_point(col="#78e08f",size=0.7)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Pinnacle")
+(p6|p7)/(p8|p9)
+
+```
+  Now We will discretize P(home win) – P(away win) values into bins ((-1,-0.8], (-0.8, -0.6], …, (0.8,1]) and determine the number of matches into that bins. Our aim is to find the number of matches which has the result draw and calculate the probability for draw for all bins by dividing draw number into match number. 
+ 
+
+```{r,warning=FALSE,message=F}
+# Number of matches into bins for Bet365
+breaks<-c(-1,-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8,1)
+b1<-cut(lastdata$Home_probs_B365-lastdata$Away_probs_B365,
+             breaks = breaks)
+Bet365<-summary(b1)
+
+#Number of matches " "  for  bet and Win
+b2<-cut(lastdata$Home_probs_BW-lastdata$Away_probs_BW,breaks = breaks)
+Bw<-summary(b2)
+
+#Number of matches " "  for IW bet
+b3<-cut(lastdata$Home_probs_IW-lastdata$Away_probs_IW,breaks = breaks)
+IW<-(summary(b3))
+
+#Number of matches " "  for  pinnacle
+b4<-cut(lastdata$Home_probs_PS-lastdata$Away_probs_PS,breaks = breaks)
+Pin<-summary(b4)
+
+Bin_distribution<-bind_cols(Bet365,Bw,IW,Pin)
+names(Bin_distribution)[c(1,2,3,4)]<-c("Bet365","BW","IW","Pin")
+```
+
+Calculating Draw numbers in different bins:
+
+```{r}
+lastdata<-lastdata%>%mutate(diff=FTHG-FTAG,B365probdiff=Home_probs_B365-Away_probs_B365,
+                            Bwprobdiff=Home_probs_BW-Away_probs_BW,
+                            Iwprobdiff=Home_probs_IW-Away_probs_IW,
+                            psprobdiff=Home_probs_PS-Away_probs_PS)
+lastdata$diff<-ifelse(lastdata$diff==0, "Draw","Not Draw")
+
+
+##Draws in Bins for B365
+B31<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=1 & lastdata$B365probdiff>=0.8 , 1, 0)
+B32<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.8 & lastdata$B365probdiff>=0.6 , 1, 0)
+B33<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.6 & lastdata$B365probdiff>=0.4, 1, 0)
+B34<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.4 & lastdata$B365probdiff>=0.2, 1, 0)
+B35<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.2 & lastdata$B365probdiff>=0 , 1, 0)
+B36<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0 & lastdata$B365probdiff>=-0.2 , 1, 0)
+B37<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.2 & lastdata$B365probdiff>=-0.4 , 1, 0)
+B38<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.4 & lastdata$B365probdiff>=-0.6 , 1, 0)
+B39<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.6 & lastdata$B365probdiff>=-0.8 , 1, 0)
+B310<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.8 & lastdata$B365probdiff>=-1 , 1, 0)
+
+Draws_B365<-c(length(which(B310==1)),length(which(B39==1)),length(which(B38==1)),length(which(B37==1)),length(which(B36==1)),length(which(B35==1)),length(which(B34==1)),length(which(B33==1)),length(which(B32==1)), length(which(B31==1)))
+
+
+##Draws in Bins for Bet and Win
+Bw31<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=1 & lastdata$Bwprobdiff>=0.8 , 1, 0)
+Bw32<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.8 & lastdata$Bwprobdiff>=0.6 , 1, 0)
+Bw33<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.6 & lastdata$Bwprobdiff>=0.4, 1, 0)
+Bw34<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.4 & lastdata$Bwprobdiff>=0.2, 1, 0)
+Bw35<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.2 & lastdata$Bwprobdiff>=0 , 1, 0)
+Bw36<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0 & lastdata$Bwprobdiff>=-0.2 , 1, 0)
+Bw37<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.2 & lastdata$Bwprobdiff>=-0.4 , 1, 0)
+Bw38<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.4 & lastdata$Bwprobdiff>=-0.6 , 1, 0)
+Bw39<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.6 & lastdata$Bwprobdiff>=-0.8 , 1, 0)
+Bw310<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.8 & lastdata$Bwprobdiff>=-1 , 1, 0)
+
+Draws_Bw<-c(length(which(Bw310==1)),length(which(Bw39==1)),length(which(Bw38==1)),length(which(Bw37==1)),length(which(Bw36==1)),length(which(Bw35==1)),length(which(Bw34==1)),length(which(Bw33==1)),length(which(Bw32==1)),length(which(Bw31==1)))
+
+##Draws in Bins for Iw
+Iw31<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=1 & lastdata$Iwprobdiff>=0.8 , 1, 0)
+Iw32<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.8 & lastdata$Iwprobdiff>=0.6 , 1, 0)
+Iw33<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.6 & lastdata$Iwprobdiff>=0.4, 1, 0)
+Iw34<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.4 & lastdata$Iwprobdiff>=0.2, 1, 0)
+Iw35<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.2 & lastdata$Iwprobdiff>=0 , 1, 0)
+Iw36<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0 & lastdata$Iwprobdiff>=-0.2 , 1, 0)
+Iw37<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.2 & lastdata$Iwprobdiff>=-0.4 , 1, 0)
+Iw38<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.4 & lastdata$Iwprobdiff>=-0.6 , 1, 0)
+Iw39<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.6 & lastdata$Iwprobdiff>=-0.8 , 1, 0)
+Iw310<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.8 & lastdata$Iwprobdiff>=-1 , 1, 0)
+
+Draws_Iw<-c(length(which(Iw310==1)),length(which(Iw39==1)),length(which(Iw38==1)),length(which(Iw37==1)),length(which(Iw36==1)),length(which(Iw35==1)),length(which(Iw34==1)),length(which(Iw33==1)),length(which(Iw32==1)),length(which(Iw31==1)))
+
+##Draws in Bins for Pin
+w31<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=1 & lastdata$psprobdiff>=0.8 , 1, 0)
+w32<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.8 & lastdata$psprobdiff>=0.6 , 1, 0)
+w33<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.6 & lastdata$psprobdiff>=0.4, 1, 0)
+w34<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.4 & lastdata$psprobdiff>=0.2, 1, 0)
+w35<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.2 & lastdata$psprobdiff>=0 , 1, 0)
+w36<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0 & lastdata$psprobdiff>=-0.2 , 1, 0)
+w37<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.2 & lastdata$psprobdiff>=-0.4 , 1, 0)
+w38<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.4 & lastdata$psprobdiff>=-0.6 , 1, 0)
+w39<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.6 & lastdata$psprobdiff>=-0.8 , 1, 0)
+w310<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.8 & lastdata$psprobdiff>=-1 , 1, 0)
+
+Draws_ps<-c(length(which(w310==1)),length(which(w39==1)),length(which(w38==1)),length(which(w37==1)),length(which(w36==1)),length(which(w35==1)),length(which(w34==1)),length(which(w33==1)),length(which(w32==1)),length(which(w31==1)))
+```
+
+Plotting : 
+ Red dots shows calculated draw probabilities for intervals. 
+
+```{r,warning=FALSE,message=FALSE}
+View(lastdata)
+names(lastdata)[43]="Result"
+Draws_bins<-bind_cols(Draws_B365,Draws_Bw,Draws_Iw,Draws_ps)
+names(Draws_bins)[c(1,2,3,4)]<-c("Draws_B365","Draws_Bw","Draws_Iw","Draws_ps")
+
+Draws_bins<-bind_cols(Draws_bins,Bin_distribution)
+
+Draws_bins<-Draws_bins%>%mutate(Cal_Bet=Draws_B365/Bet365,
+                  Cal_Bw=Draws_Bw/BW,
+                  Cal_Iw=Draws_Iw/IW,
+                  Cal_Pin=Draws_ps/Pin)
+uy<-c(-0.9,-0.7,-0.5,-0.3,-0.1,0.1,0.3,0.5,0.7,0.9)
+Draws_bins<-bind_cols(Draws_bins,uy)
+names(Draws_bins)[13]<-"interval_mean"
+#View(Draws_bins)
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_B365-Away_probs_B365,y=Draw_probs_B365),col="#78e08f",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Bet),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Bet365")
+
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_IW-Away_probs_IW,y=Draw_probs_Iw),col="#ffb8b8",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Iw),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Iw")
+
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_BW-Away_probs_BW,y=Draw_probs_BW),col="#60a3bc",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Bw),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("BetandWin")
+
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_PS-Away_probs_PS,y=Draw_probs_PS),col="#079992",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Pin),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Pinnacle")
+
+
+
+```
+ 
+  After observing graphs of the data we can conclude that four bookmakers differs each others with
+small percentage. For all bookmakers the matches that are into bin [0:0.2] for P(Home)-P(Away) gives best chance to win if one plays draws for that matches in longrun. However for the other intervals our calculations show that actual draw probabilities are less than bookmakers offers.
+ 
+ 
+ 
+# **TASK.3**
+
+In a football match referee is one of the most influential element for the result.
+For this reason, I decided to choose a referee randomly for new observation and comparison.
+I will observe the matches in which the referee is M. Atkinson. 
+
+ Selecting the matches ;
+ 
+```{r}
+lastdata<-lastdata%>%mutate(Ref=matches$Referee)
+length(which(lastdata$Ref=="M Atkinson"))
+lastdata<-lastdata[lastdata$Ref=="M Atkinson",]
+
+
+```
+After this point I used same codes with task2.2 and task2.3.
+
+
+```{r,echo=FALSE}
+
+p6<-ggplot(lastdata,aes(x=Home_probs_B365-Away_probs_B365,y=Draw_probs_B365))+
+  geom_point(col="#f6b93b",size=1)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Bet365_Ref:M. Atkinson")
+p7<-ggplot(lastdata,aes(x=Home_probs_BW-Away_probs_BW,y=Draw_probs_BW))+
+  geom_point(col="#e55039",size=1)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Bet And Win_Ref:M. Atkinson")
+p8<-ggplot(lastdata,aes(x=Home_probs_IW-Away_probs_IW,y=Draw_probs_Iw))+
+  geom_point(col="#4a69bd",size=1)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("IW Bet_Ref:M. Atkinson")
+p9<-ggplot(lastdata,aes(x=Home_probs_PS-Away_probs_PS,y=Draw_probs_PS))+
+  geom_point(col="#78e08f",size=1)+
+  ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Pinnacle_Ref:M. Atkinson")
+(p6|p7)/(p8|p9)
+
+```
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+# Number of matches into bins for Bet365
+breaks<-c(-1,-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8,1)
+b1<-cut(lastdata$Home_probs_B365-lastdata$Away_probs_B365,
+             breaks = breaks)
+Bet365<-summary(b1)
+
+#Number of matches " "  for  bet and Win
+b2<-cut(lastdata$Home_probs_BW-lastdata$Away_probs_BW,breaks = breaks)
+Bw<-summary(b2)
+
+#Number of matches " "  for IW bet
+b3<-cut(lastdata$Home_probs_IW-lastdata$Away_probs_IW,breaks = breaks)
+IW<-(summary(b3))
+
+#Number of matches " "  for  pinnacle
+b4<-cut(lastdata$Home_probs_PS-lastdata$Away_probs_PS,breaks = breaks)
+Pin<-summary(b4)
+
+Bin_distribution<-bind_cols(Bet365,Bw,IW,Pin)
+names(Bin_distribution)[c(1,2,3,4)]<-c("Bet365","BW","IW","Pin")
+```
+``````{r, echo=FALSE}
+lastdata<-lastdata%>%mutate(diff=FTHG-FTAG,B365probdiff=Home_probs_B365-Away_probs_B365,
+                            Bwprobdiff=Home_probs_BW-Away_probs_BW,
+                            Iwprobdiff=Home_probs_IW-Away_probs_IW,
+                            psprobdiff=Home_probs_PS-Away_probs_PS)
+lastdata$diff<-ifelse(lastdata$diff==0, "Draw","Not Draw")
+
+
+##Draws in Bins for B365
+B31<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=1 & lastdata$B365probdiff>=0.8 , 1, 0)
+B32<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.8 & lastdata$B365probdiff>=0.6 , 1, 0)
+B33<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.6 & lastdata$B365probdiff>=0.4, 1, 0)
+B34<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.4 & lastdata$B365probdiff>=0.2, 1, 0)
+B35<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0.2 & lastdata$B365probdiff>=0 , 1, 0)
+B36<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=0 & lastdata$B365probdiff>=-0.2 , 1, 0)
+B37<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.2 & lastdata$B365probdiff>=-0.4 , 1, 0)
+B38<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.4 & lastdata$B365probdiff>=-0.6 , 1, 0)
+B39<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.6 & lastdata$B365probdiff>=-0.8 , 1, 0)
+B310<-ifelse(lastdata$diff=="Draw" & lastdata$B365probdiff<=-0.8 & lastdata$B365probdiff>=-1 , 1, 0)
+
+Draws_B365<-c(length(which(B310==1)),length(which(B39==1)),length(which(B38==1)),length(which(B37==1)),length(which(B36==1)),length(which(B35==1)),length(which(B34==1)),length(which(B33==1)),length(which(B32==1)), length(which(B31==1)))
+
+
+##Draws in Bins for Bet and Win
+Bw31<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=1 & lastdata$Bwprobdiff>0.8 , 1, 0)
+Bw32<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.8 & lastdata$Bwprobdiff>0.6 , 1, 0)
+Bw33<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.6 & lastdata$Bwprobdiff>0.4, 1, 0)
+Bw34<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.4 & lastdata$Bwprobdiff>0.2, 1, 0)
+Bw35<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0.2 & lastdata$Bwprobdiff>0 , 1, 0)
+Bw36<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=0 & lastdata$Bwprobdiff>-0.2 , 1, 0)
+Bw37<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.2 & lastdata$Bwprobdiff>-0.4 , 1, 0)
+Bw38<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.4 & lastdata$Bwprobdiff>-0.6 , 1, 0)
+Bw39<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.6 & lastdata$Bwprobdiff>-0.8 , 1, 0)
+Bw310<-ifelse(lastdata$diff=="Draw" & lastdata$Bwprobdiff<=-0.8 & lastdata$Bwprobdiff>-1 , 1, 0)
+
+Draws_Bw<-c(length(which(Bw310==1)),length(which(Bw39==1)),length(which(Bw38==1)),length(which(Bw37==1)),length(which(Bw36==1)),length(which(Bw35==1)),length(which(Bw34==1)),length(which(Bw33==1)),length(which(Bw32==1)),length(which(Bw31==1)))
+
+##Draws in Bins for Iw
+Iw31<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=1 & lastdata$Iwprobdiff>=0.8 , 1, 0)
+Iw32<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.8 & lastdata$Iwprobdiff>=0.6 , 1, 0)
+Iw33<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.6 & lastdata$Iwprobdiff>=0.4, 1, 0)
+Iw34<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.4 & lastdata$Iwprobdiff>=0.2, 1, 0)
+Iw35<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0.2 & lastdata$Iwprobdiff>=0 , 1, 0)
+Iw36<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=0 & lastdata$Iwprobdiff>=-0.2 , 1, 0)
+Iw37<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.2 & lastdata$Iwprobdiff>=-0.4 , 1, 0)
+Iw38<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.4 & lastdata$Iwprobdiff>=-0.6 , 1, 0)
+Iw39<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.6 & lastdata$Iwprobdiff>=-0.8 , 1, 0)
+Iw310<-ifelse(lastdata$diff=="Draw" & lastdata$Iwprobdiff<=-0.8 & lastdata$Iwprobdiff>=-1 , 1, 0)
+
+Draws_Iw<-c(length(which(Iw310==1)),length(which(Iw39==1)),length(which(Iw38==1)),length(which(Iw37==1)),length(which(Iw36==1)),length(which(Iw35==1)),length(which(Iw34==1)),length(which(Iw33==1)),length(which(Iw32==1)),length(which(Iw31==1)))
+
+##Draws in Bins for Pin
+w31<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=1 & lastdata$psprobdiff>=0.8 , 1, 0)
+w32<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.8 & lastdata$psprobdiff>=0.6 , 1, 0)
+w33<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.6 & lastdata$psprobdiff>=0.4, 1, 0)
+w34<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.4 & lastdata$psprobdiff>=0.2, 1, 0)
+w35<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0.2 & lastdata$psprobdiff>=0 , 1, 0)
+w36<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=0 & lastdata$psprobdiff>=-0.2 , 1, 0)
+w37<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.2 & lastdata$psprobdiff>=-0.4 , 1, 0)
+w38<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.4 & lastdata$psprobdiff>=-0.6 , 1, 0)
+w39<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.6 & lastdata$psprobdiff>=-0.8 , 1, 0)
+w310<-ifelse(lastdata$diff=="Draw" & lastdata$psprobdiff<=-0.8 & lastdata$psprobdiff>=-1 , 1, 0)
+
+Draws_ps<-c(length(which(w310==1)),length(which(w39==1)),length(which(w38==1)),length(which(w37==1)),length(which(w36==1)),length(which(w35==1)),length(which(w34==1)),length(which(w33==1)),length(which(w32==1)),length(which(w31==1)))
+
+```
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+
+Draws_bins<-bind_cols(Draws_B365,Draws_Bw,Draws_Iw,Draws_ps)
+names(Draws_bins)[c(1,2,3,4)]<-c("Draws_B365","Draws_Bw","Draws_Iw","Draws_ps")
+
+Draws_bins<-bind_cols(Draws_bins,Bin_distribution)
+
+Draws_bins<-Draws_bins%>%mutate(Cal_Bet=Draws_B365/Bet365,
+                  Cal_Bw=Draws_Bw/BW,
+                  Cal_Iw=Draws_Iw/IW,
+                  Cal_Pin=Draws_ps/Pin)
+uy<-c(-0.9,-0.7,-0.5,-0.3,-0.1,0.1,0.3,0.5,0.7,0.9)
+Draws_bins<-bind_cols(Draws_bins,uy)
+names(Draws_bins)[13]<-"interval_mean"
+#View(Draws_bins)
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_B365-Away_probs_B365,y=Draw_probs_B365),col="#78e08f",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Bet),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Bet365_Ref:M. Atkinson")
+
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_IW-Away_probs_IW,y=Draw_probs_Iw),col="#ffb8b8",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Iw),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Iw_Red:M. Atkinson")
+
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_BW-Away_probs_BW,y=Draw_probs_BW),col="#4a69bd",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Bw),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("BetandWin_Red:M. Atkinson")
+
+ggplot()+
+  geom_point(data=lastdata,aes(x=Home_probs_PS-Away_probs_PS,y=Draw_probs_PS),col="#82ccdd",size=1.5)+
+  geom_point(data = Draws_bins,aes(x=interval_mean,y=Cal_Pin),col="red",size=2)+
+
+    ylab("P(Tie)")+xlab("P(Home)-P(Away)")+ggtitle("Pinnacle_Red:M. Atkinson")
+
+
+
+```
+
+ From the graphics where red dots shows the calculated draw probability for intervals, we can conclude that for the matches where $P(Home)-P(Away)\in(0,0.2]$ we can win in longrun if the referee is M.Atkinson by betting draw. Bookmaker Bet365 differs from the other bookmakers for the interval (-0.4,-0.6). Calculated probability for this interval is much more bigger than the probability obtain from Bet356 data. Compared with the all data, we can say that draw probabilities change significantly when the referee is M. Atkinson.
