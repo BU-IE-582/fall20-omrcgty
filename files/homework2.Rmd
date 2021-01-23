@@ -1,0 +1,522 @@
+---
+html_document: null
+author: "Ömer Çağatay Talikacı"
+date: "12.12.2020"
+title: "Homework 2"
+output:
+  html_document:
+    toc: true
+---
+
+# TASK 1
+
+```{r,message=FALSE,warning=FALSE}
+library(scatterplot3d)
+library(car)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(matrixStats)
+
+```
+
+```{r, message=F, warning=FALSE}
+library(knitr)
+library(rgl)
+#knit_hooks$set(webgl = hook_webgl)
+setupKnitr(autoprint = TRUE)
+```
+
+*_Importing and Manipulation of Data_*
+
+```{r, message=FALSE, warning=FALSE}
+setwd("C:/Users/ÖmerÇağatay/Desktop/Ie 582/hw2/UWave")
+#list.files()
+x= "uWaveGestureLibrary_X_TRAIN"
+y= "uWaveGestureLibrary_Y_TRAIN"
+z= "uWaveGestureLibrary_Z_TRAIN"
+
+xtrain<-as.matrix(read.table(x))
+ytrain<-as.matrix(read.table(y))
+ztrain<-as.matrix(read.table(z))
+
+
+```
+ 
+ At this step in the for loops, the classes are separated, then by taking cumulative sum 
+velocity is calculated at first step, then again by taking cumulative sum of the velocity 
+we will get position information.
+
+```{r, message=FALSE, warning=FALSE}
+#Classx"i" represents iTh class of x axis, velocityx"i", and Positionx"i" represent velocity and position respectively. Same system with y and z axis
+for(i in 1:8) { 
+  nam <- paste("classx", i, sep = "")
+  assign(nam, xtrain[xtrain[,1]==i,-1])
+  name<-paste("velocityx",i,sep = "")
+  assign(name,rowCumsums(xtrain[xtrain[,1]==i,-1]))
+  p<-paste("positionx",i,sep = "")
+  assign(p,rowCumsums(rowCumsums(xtrain[xtrain[,1]==i,-1])))
+}
+for(i in 1:8) { 
+  nam <- paste("classy", i, sep = "")
+  assign(nam, ytrain[ytrain[,1]==i,-1])
+  name<-paste("velocityy",i,sep = "")
+  assign(name,rowCumsums(ytrain[ytrain[,1]==i,-1]))
+  p<-paste("positiony",i,sep = "")
+  assign(p,rowCumsums(rowCumsums(ytrain[ytrain[,1]==i,-1])))
+}
+for(i in 1:8) { 
+  nam <- paste("classz", i, sep = "")
+  assign(nam, ztrain[ztrain[,1]==i,-1])
+  name<-paste("velocityz",i,sep = "")
+  assign(name,rowCumsums(ztrain[ztrain[,1]==i,-1]))
+  p<-paste("positionz",i,sep = "")
+  assign(p,rowCumsums(rowCumsums(ztrain[ztrain[,1]==i,-1])))
+}
+```
+
+*_Plotting Positions_*
+
+3D Position Visualization of an instance from Gesture 1 
+
+```{r, message=FALSE, warning=FALSE}
+
+plot3d(positionx1[1,], positiony1[1,], positionz1[1,], 
+      xlab = "x location", ylab = "y location", zlab = "z location"
+       ,col ="red", main="An Instance from Gesture 1 ")
+
+#scatter3d(positionx1[1,],positiony1[1,],positionz1[1,],surface = F,
+#xlab = "X Location", ylab = "Y Location", zlab = "Z Location",
+ #      point.col = "blue")
+
+```
+
+An Example From Gesture 2
+
+```{r message=FALSE, warning=FALSE}
+
+plot3d(positionx2[1,], positiony2[1,], positionz2[1,],
+      xlab = "x location",ylab = "y location", zlab = "z location"
+       ,col="red", main="An Instance from Gesture 2 ")
+```
+
+An Example From Gesture 3
+```{r, message=FALSE, warning=FALSE}
+plot3d(positionx3[1,],positiony3[1,],positionz3[1,],
+      xlab = "x location",ylab = "y location", zlab = "z location"
+       ,col= "red",main="An Instance from Gesture 3 ")
+```
+
+An Example From Gesture 4
+```{r, message=FALSE, warning=FALSE}
+
+plot3d(positionx4[1,],positiony4[1,],positionz4[1,],
+      xlab = "x location",ylab = "y location", zlab = "z location"
+       ,col= "red",main="An Instance from Gesture 4 ")
+```
+
+An Example From Gesture 5
+```{r, message=FALSE, warning=FALSE}
+plot3d(positionx5[1,],positiony5[1,],positionz5[1,],
+      xlab = "x location",ylab = "y location", zlab = "z location"
+       ,col="red",main="An Instance from Gesture 5 ")
+```
+
+An Example From GEsture 6
+```{r, message=FALSE, warning=FALSE}
+
+plot3d(positionx6[1,], positiony6[1,], positionz6[1,],
+      xlab = "x location",ylab = "y location", zlab = "z location"
+       ,col="red", main="An Instance from Gesture 6 ")
+```
+
+An Example From Gesture 7
+```{r, message=FALSE, warning=FALSE}
+
+plot3d(positionx7[1,], positiony7[1,], positionz7[1,], 
+      xlab = "x location", ylab = "y location", zlab = "z location"
+       , col ="red",main="An Instance from Gesture 7 ")
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+
+plot3d(positionx8[1,], positiony8[1,], positionz8[1,],
+      xlab = "x location",ylab = "y location", zlab = "z location"
+       ,col="red",main="An Instance from Gesture 8 ")
+```
+
+
+# TASK 2
+
+  At the first part I visualized the position information. For this part, firstly I continued with acceleration information for pca, then I applied same process to position information to argue whether or not can we separate the gestures by observing graphs in the reduced dimensions.
+
+## PCA for Accelaration Information
+ 
+```{r, message=FALSE, warning=FALSE,error=FALSE}
+
+X<-rbind(classx1,classx2,classx3,classx4,classx5,classx6,classx7,classx8)
+Y<-rbind(classy1,classy2,classy3,classy4,classy5,classy6,classy7,classy8)
+Z<-rbind(classz1,classz2,classz3,classz4,classz5,classz6,classz7,classz8)
+
+#Position
+X<-cbind(1:nrow(X),X)
+X<-cbind(1,X)
+Y<-cbind(1:nrow(Y),Y)
+Y<-cbind(1,Y)
+Z<-cbind(1:nrow(Z),Z)
+Z<-cbind(1,Z)
+
+for (i in 1:nrow(classx1)) {
+  X[i,1]<-1
+  Y[i,1]<-1
+  Z[i,1]<-1
+}
+for (i in (nrow(classx1)+1):(t1<-(nrow(classx1)+nrow(classx2)))) {
+  X[i,1]<-2
+   Y[i,1]<-2
+  Z[i,1]<-2
+}
+for (i in (t1+1):(t2<-(t1+nrow(classx3)))) {
+  X[i,1]<-3
+   Y[i,1]<-3
+  Z[i,1]<-3
+}
+for (i in (t2+1):(t3<-(t2+nrow(classx4)))) {
+  X[i,1]<-4
+   Y[i,1]<-4
+  Z[i,1]<-4
+}
+for (i in (t3+1):(t4<-(t3+nrow(classx5)))) {
+  X[i,1]<-5
+   Y[i,1]<-5
+  Z[i,1]<-5
+}
+for (i in (t4+1):(t5<-(t4+nrow(classx6)))) {
+  X[i,1]<-6
+   Y[i,1]<-6
+  Z[i,1]<-6
+}
+for (i in (t5+1):(t6<-(t5+nrow(classx7)))) {
+  X[i,1]<-7
+   Y[i,1]<-7
+  Z[i,1]<-7
+}
+for (i in (t6+1):(t7<-(t6+nrow(classx8)))) {
+  X[i,1]<-8
+   Y[i,1]<-8
+  Z[i,1]<-8
+}
+
+colnames(X)[c(1,2)]<-c("class","time_series_id")
+colnames(Y)[c(1,2)]<-c("class","time_series_id")
+colnames(Z)[c(1,2)]<-c("class","time_series_id")
+
+df.X<-as.data.frame(X)
+df.Y<-as.data.frame(Y)
+df.Z<-as.data.frame(Z)
+
+X_long<-reshape(df.X, 
+        direction = "long",
+        varying = list(names(df.X)[3:ncol(df.X)]),
+        v.names = "X",
+        idvar = c("class", "time_series_id"),
+        timevar = "Time_Index",
+        times = (1:(ncol(df.X)-2)))
+
+Y_long<-reshape(df.Y, 
+        direction = "long",
+        varying = list(names(df.Y)[3:ncol(df.Y)]),
+        v.names = "Y",
+        idvar = c("class", "time_series_id"),
+        timevar = "Time_Index",
+        times = 1:(ncol(df.Y)-2))
+
+Z_long<-reshape(df.Z, 
+        direction = "long",
+        varying = list(names(df.Z)[3:ncol(df.Z)]),
+        v.names = "Z",
+        idvar = c("class", "time_series_id"),
+        timevar = "Time_Index",
+        times = 1:(ncol(df.Z)-2))
+
+Long_data<-cbind.data.frame(X_long,Y_long$Y,Z_long$Z)
+
+names(Long_data)[c(5,6)]=c("Y","Z")
+
+pca<-princomp(Long_data[, 4:6],scale. =T )
+
+summary(pca)
+pca$e
+
+data_with_pca_scores<-cbind(Long_data,pca$scores)
+```
+
+```{r}
+for (i in 1:8) {
+  
+  s<-data_with_pca_scores%>%filter(data_with_pca_scores$class == i)
+  s<-as.data.frame(s)
+
+  random<-sample(unique(s$time_series_id),size = 2,replace=F)
+  
+  s1<-s%>%filter(s$time_series_id==(random)[1])
+  
+  s2<-s%>%filter(s$time_series_id==(random)[2])
+  
+ plot<-ggplot()+geom_line(data = s1,aes(x=Time_Index, y=Comp.1,color="red"))+geom_line(data = s2,aes(x=Time_Index, y=Comp.1,color="blue"))+labs(title=paste("2 Random Example From Class ",i),x="Time Index",y="PCA Score")+labs(color='Time Seies Id')  +
+  scale_color_manual(labels = c((random)[1], (random)[2]), values = c("blue", "red"))
+ print(plot)
+ 
+}
+
+```
+
+### My Comments on Graphs
+   
+   By looking graphics which show pca scores for randomly chosen 2 time series, it could be said that classes can be separated by observing graphs of reduced dimensions, most of the time. For each graph two lines shows similarity according to its classes. However, rarely we can see that lines differs. Still we can guess the class of the gesture most of the times of this rare occasions. Since, the time series are chosen randomly every time I knit the Rmd to html I can't comment specifically on classes. 
+   
+   
+## PCA for Position Information   
+  
+
+```{r, message=FALSE, warning=FALSE,error=FALSE}
+
+Xp<-rbind(positionx1,positionx2,positionx3,positionx4,positionx5,positionx6,positionx7,positionx8)
+Yp<-rbind(positiony1,positiony2,positiony3,positiony4,positiony5,positiony6,positiony7,positiony8)
+Zp<-rbind(positionz1,positionz2,positionz3,positionz4,positionz5,positionz6,positionz7,positionz8)
+
+Xp<-cbind(1:nrow(X),Xp)
+Xp<-cbind(1,Xp)
+Yp<-cbind(1:nrow(Y),Yp)
+Yp<-cbind(1,Yp)
+Zp<-cbind(1:nrow(Z),Zp)
+Zp<-cbind(1,Zp)
+
+for (i in 1:nrow(classx1)) {
+  Xp[i,1]<-1
+  Yp[i,1]<-1
+  Zp[i,1]<-1
+}
+for (i in (nrow(classx1)+1):(t1<-(nrow(classx1)+nrow(classx2)))) {
+  Xp[i,1]<-2
+   Yp[i,1]<-2
+  Zp[i,1]<-2
+}
+for (i in (t1+1):(t2<-(t1+nrow(classx3)))) {
+  Xp[i,1]<-3
+   Yp[i,1]<-3
+  Zp[i,1]<-3
+}
+for (i in (t2+1):(t3<-(t2+nrow(classx4)))) {
+  Xp[i,1]<-4
+   Yp[i,1]<-4
+  Zp[i,1]<-4
+}
+for (i in (t3+1):(t4<-(t3+nrow(classx5)))) {
+  Xp[i,1]<-5
+   Yp[i,1]<-5
+  Zp[i,1]<-5
+}
+for (i in (t4+1):(t5<-(t4+nrow(classx6)))) {
+  Xp[i,1]<-6
+   Yp[i,1]<-6
+  Zp[i,1]<-6
+}
+for (i in (t5+1):(t6<-(t5+nrow(classx7)))) {
+  Xp[i,1]<-7
+   Yp[i,1]<-7
+  Zp[i,1]<-7
+}
+for (i in (t6+1):(t7<-(t6+nrow(classx8)))) {
+  Xp[i,1]<-8
+   Yp[i,1]<-8
+  Zp[i,1]<-8
+}
+Xp<-as.data.frame(Xp)
+Yp<-as.data.frame(Yp)
+Zp<-as.data.frame(Zp)
+colnames(Xp)[c(1,2)]<-c("class","time_series_id")
+colnames(Yp)[c(1,2)]<-c("class","time_series_id")
+colnames(Zp)[c(1,2)]<-c("class","time_series_id")
+
+df.Xp<-as.data.frame(Xp)
+df.Yp<-as.data.frame(Yp)
+df.Zp<-as.data.frame(Zp)
+
+Xp_long<-reshape(df.Xp, 
+        direction = "long",
+        varying = list(names(df.Xp)[3:ncol(df.Xp)]),
+        v.names = "Xp",
+        idvar = c("class", "time_series_id"),
+        timevar = "Time_Index",
+        times = (1:(ncol(df.Xp)-2)))
+
+Yp_long<-reshape(df.Yp, 
+        direction = "long",
+        varying = list(names(df.Yp)[3:ncol(df.Yp)]),
+        v.names = "Yp",
+        idvar = c("class", "time_series_id"),
+        timevar = "Time_Index",
+        times = 1:(ncol(df.Yp)-2))
+
+Zp_long<-reshape(df.Zp, 
+        direction = "long",
+        varying = list(names(df.Zp)[3:ncol(df.Zp)]),
+        v.names = "Zp",
+        idvar = c("class", "time_series_id"),
+        timevar = "Time_Index",
+        times = 1:(ncol(df.Zp)-2))
+
+Long_datap<-cbind.data.frame(Xp_long,Yp_long$Y,Zp_long$Z)
+
+names(Long_datap)[c(5,6)]=c("Y","Z")
+
+pcap<-princomp(Long_datap[, 4:6],scale. =T )
+
+summary(pcap)
+
+data_with_pca_scoresp<-cbind(Long_datap,pcap$scores)
+```
+
+```{r}
+for (i in 1:8) {
+  
+  s<-data_with_pca_scoresp%>%filter(data_with_pca_scoresp$class == i)
+  s<-as.data.frame(s)
+
+  random<-sample(unique(s$time_series_id),size = 2,replace=F)
+  
+  s1<-s%>%filter(s$time_series_id==(random)[1])
+  
+  s2<-s%>%filter(s$time_series_id==(random)[2])
+  
+ plot<-ggplot()+geom_line(data = s1,aes(x=Time_Index, y=Comp.1,color="red"))+geom_line(data = s2,aes(x=Time_Index, y=Comp.1,color="blue"))+labs(title=paste("2 Random Example From Class ",i),x="Time Index",y="PCA Score")+labs(color='Time Seies Id')  +
+  scale_color_manual(labels = c((random)[1], (random)[2]), values = c("blue", "red"))
+ print(plot)
+ 
+}
+
+```
+  
+###Comments on Graphs
+  
+ Firstly compared with the graphs of pca applied to acceleration information,
+ graphs of pca applied to position information are less reliable for determining class information just by looking two lines since at some occasions these lines go totally different directions. But I think again the classes can be separated in reduced dimensions most of the time. At these graphs absolute value of the slopes of the lines can be classificator for us to determines the classes. Again since I don't know which time series will be chosen at knitting process I can't make comments on specific classes.
+
+# Task 3
+ 
+ Calculating PCA separately for each class;
+ 
+ In the for loop, firstly datas are separated according to their classes. Then PCA is calculated for each classes. After looking the graphics I decided to continue with acceleration information at this step.
+ 
+```{r,error=FALSE,message=F}
+
+for (i in 1:8) {
+  lo<-paste("long_class",i,sep = "")
+  assign(lo,(Long_data%>%filter(Long_data$class==i)))
+  lop<-paste("long_class_pca",i,sep = "")
+  assign(lop,princomp(assign(lo,(Long_data%>%filter(Long_data$class==i)))[,4:6]))
+}
+
+```
+
+```{r,error=FALSE,message=F}
+summary(pca)
+
+
+```
+
+*PCA summary for class 1*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca1)
+
+```
+*PCA summary for class 2*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca2)
+
+```
+*PCA summary for class 3*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca3)
+
+```
+*PCA summary for class 4*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca4)
+
+```
+*PCA summary for class 5*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca5)
+
+```
+*PCA summary for class 6*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca6)
+
+```
+*PCA summary for class 7*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca7)
+
+```
+*PCA summary for class 8*
+
+```{r,error=FALSE,message=F}
+summary(long_class_pca8)
+
+```
+## Comments on PCA's for Different classes
+
+Although  the first principal components are different for each classes, they don't differ significantly.2^nd class is the one that resembles most to all data. We can see for classes 1 and 5 differs more than the other classes. We had highest score for variance at 8^th class. 
+
+
+# Task 4
+
+In this task, euclidean distance chosen for multidimensional scaling.
+
+```{r}
+
+dX<-dist(X[,-c(1,2)], method = "euclidean", p = 2)
+dY<-dist(Y[,-c(1,2)], method = "euclidean", p = 2)
+dZ<-dist(Z[,-c(1,2)], method = "euclidean", p = 2)
+distance<-dX+dY+dZ
+
+mds2d <- cmdscale(distance, k = 2)
+scaled_data <- as.data.frame(mds2d)
+
+budur<-cbind(X[,1],scaled_data)
+
+names(budur)[c(1,2,3)]<-c("class","X","Y")
+
+
+pl<-ggplot(budur,aes(x=X,y=Y,group=factor(class),colour=factor(class)))+geom_point()+ scale_color_manual(values=c("#f1c40f","#7f8c8d","#c0392b","#34495e","#9b59b6","#3498db","#27ae60","#d35400")) +labs(title = "MDS with 2 Dimensions",x="X", y="Y",color="Class")
+pl
+
+pl+facet_wrap(~class)
+
+
+
+```
+
+## Comments on Task 4
+
+ By looking visualizations, multidimensional scaling works better for the classes 1, 2 and 7 in which the points collapse in specific area more than the other classes. Still it could be said that we can guess more or less the gesture by looking the position of the point on the graph. 
+ 
+ 
+ 
+
+
+
+
+
+

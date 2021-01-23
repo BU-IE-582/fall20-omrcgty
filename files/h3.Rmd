@@ -1,0 +1,274 @@
+---
+html_document: null
+author: "Ömer Çağatay Talikacı"
+date: "01.01.2021"
+title: "Homework 3"
+output:
+  html_document:
+    toc: true
+---
+
+
+```{r,warning=FALSE,message=F}
+
+library(tidyverse)
+library(lubridate)
+library(MLmetrics)
+library(data.table)
+library(knitr)
+library(stats)
+library(glmnet)
+library(ggplot2)
+```
+
+
+# Reading and Organizing Data
+
+Original data has 3 column with date, hour and consumption information.
+All of them in character format. I will change hour and consumption information numeric format and structured date information as I want, at first step.
+
+```{r}
+
+data=read.csv("C:/Users/ÖmerÇağatay/Desktop/Ie 582/hw3/GercekZamanliTuketim-01012016-01122020.csv")
+```
+
+```{r}
+names(data)[c(1,2,3)]<-c("Date","Hour","Consumption")
+data$Date<-format(as.Date(data$Date,format="%d.%m.%Y"))
+
+data$Consumption = gsub(".","",data$Consumption,fixed = T)
+data$Consumption = gsub(",",".",data$Consumption,fixed = T)
+data$Consumption=as.numeric(data$Consumption)
+data$Hour<-as.numeric(substr(data$Hour,1,2))
+sapply(data,mode)
+
+```
+
+Before starting to work on data I will check if there is any duplicated row or 0 consumption days.
+
+```{r}
+zero<-data%>%filter(data$Consumption==0)
+#View(zero)
+dup<-data%>%filter(duplicated(data))
+#View(dup)
+data[2068,][2]<-3
+setDT(data)[Date=="2016-03-27", Consumption:=NA]
+Na<-data%>%filter(Date=="2016-03-27")
+#View(Na)
+```
+
+At the date 2016-03-27 there were a 0 consumption hour and a duplicated data. I made all days consumption info "NA" for this reason.
+
+After these steps we are ready to apply first task.
+
+# Task A
+
+For task A, we will use after 1st of
+November, 2020 as our test period. We will use 168 and 48 hours ago consumption values as naïve approaches to predict next day’s consumption and calculate the MAPE values.
+
+## Calculating MAPE values for lag48 and lag168 for naive approach.
+
+```{r}
+data <- data %>% mutate(lag48 = lag(Consumption, 48),lag168=lag(Consumption,168))
+
+test<-data%>%filter(data$Date>="2020-11-01")
+train<-data%>%filter(data$Date<"2020-11-01")
+
+MAPE(test$lag48,test$Consumption)*100
+MAPE(test$lag168,test$Consumption)*100
+
+```
+
+## Summary for lag48 and lag168 calculated with respect to hour informatin.
+
+  I decided to add some further information to part A and B while I am doing part F. For part F in order to compare all models in box plots I divided the part A and part B according to hours as in the part C and D to see the difference more clearly in box plot.
+
+
+ 
+```{r,warning=F,message=FALSE}
+
+d48<-test[,-5]
+d168<-test[,-4]
+x48=d48%>%group_by(Hour)%>%summarise(Mape=MAPE(lag48,Consumption)*100)
+
+x168=d168%>%group_by(Hour)%>%summarise(Mape=MAPE(lag168,Consumption)*100)
+
+summary(x168$Mape)
+
+summary(x48$Mape)
+
+var(x48$Mape)
+
+var(x168$Mape)
+
+```
+## Comments on Part A
+  
+  Mean absolute percentage error for lag48 is 8.060 and for lag168 it is 3.449.
+Only just by looking this info we can say that lag168 gives much more better approach compared to lag48. After looking variance for both, again lag168 is much more better. Furthermore I think it can be said that in general lag168 give us a good prediction. However it is not the case for lag48.
+
+
+
+# Task B
+
+At this step we will use lag48 and lag 168 as features to build a linear regression model. We will use the date till $1^{st}$ of Nov. This data includes some NA values that are from lag168, lag48 and from the date 2016-03-27. I will first get rid of the NA values and than use lm() function for my linear regression model.
+
+
+```{r,warning=F,message=F}
+trainb<-train%>%filter(complete.cases(.))
+reg<-lm(formula=Consumption ~ lag48+lag168,data = trainb)
+summary(reg)
+prediction<-predict(reg,test)
+testwr<-test%>%mutate(prediction=prediction)
+MAPE(testwr$prediction,testwr$Consumption)*100
+
+
+xb46=testwr%>%group_by(Hour)%>%summarise(Mape=MAPE(prediction,Consumption)*100)
+
+
+```
+## Summary for part B
+
+```{r,warning=FALSE,message=F}
+xb46=testwr%>%group_by(Hour)%>%summarise(Mape=MAPE(prediction,Consumption)*100)
+
+summary(xb46$Mape)
+var(xb46$Mape)
+
+```
+## Comments for part B
+
+ At this part lag48 and lag168 are used as one of our features. Mape for this step is 4.231. So it is better than naive approach with lag48. However naive approach with lag168 gives better results. So this linear regression model created by using lag48 and lag168 is waste of energy compared to the naive app. for lag168. 
+ 
+
+# Task C
+
+
+```{r,layout="l-body-outset"}
+
+c<-c(0:23)
+Mape_hour<-data.frame(c,c)
+names(Mape_hour)[c(1,2)]<-c("Hour","Mape")
+for (i in 0:23) {
+testh<-test%>%filter(Hour==i)
+h<-trainb%>%filter((Hour==i))
+
+regh<-lm(formula = Consumption~lag48+lag168,data = h)
+predictionh<-predict(regh,testh)
+mape_hour<-MAPE(predictionh,testh$Consumption)*100
+
+  Mape_hour[i+1,2]<-mape_hour
+}
+
+
+Mape_hour
+summary(Mape_hour$Mape)
+
+var(Mape_hour$Mape)
+
+
+```
+
+```{r}
+plot<-ggplot()+geom_line(data = Mape_hour,aes(x=Hour,y=Mape,col="red"))+geom_line(data = xb46,aes(x=Hour,y=Mape,col="blue"))+labs(color='Models')  +
+  scale_color_manual(labels = c("Part B(Lin.reg.) ", "Hourly.Lin.reg"), values = c("blue", "red"))
+
+plot
+
+
+```
+
+## Comments on part C
+
+This model is really close to model at part b that we use linear regression model in which we use lag48 and lag168 as features.So the comments that I made for part B can be said for part C also. Here I will compare these two model with each other. Part C's MAPE value is 4.361 which is very close to MAPE value of Lin .reg. model at part B(4.231). Therefore I decided to investigate how they behave hourly. By the visualization above Part B gives better results for night hours however it is not the case for daytime. By these observations I would choose Hourly linear reg.(C) between two.  
+
+# Task D
+```{r}
+
+lag48test<-test[,-5]
+lag168test<-test[,-4]
+lag48train<-trainb[,-5]
+lag168train<-trainb[,-4]
+
+#Train data Long to Wide 
+train_wide48<-reshape(lag48train, idvar = c("Date"), timevar = "Hour", drop=c("Consumption"),direction = "wide")
+train_widec<-reshape(lag48train, idvar = "Date", timevar = "Hour", drop=c("lag48"),direction = "wide")
+train_wide168<-reshape(lag168train, idvar = "Date", timevar = "Hour", drop=c("Consumption"),direction = "wide")
+train_wide<-bind_cols(train_wide48,train_wide168[,-1])
+
+#Test Data Long to wide
+test_wide48 <- reshape(lag48test, idvar = "Date", timevar = "Hour", drop=c("Consumption"),direction = "wide")
+test_widec<-reshape(lag48test,idvar = "Date",timevar = "Hour",drop = "lag48",direction = "wide")
+test_wide168 <- reshape(lag168test, idvar = "Date", timevar = "Hour", drop=c("Consumption"),direction = "wide")
+test_wide<-bind_cols(test_wide48,test_wide168[,-1])
+
+map<- rep(0,times=24)
+
+for (i in 0:23) {
+  a<-i+2
+  b<-i+1
+  add_hour_consumtion<-bind_cols(train_wide,train_widec[,..a])
+  
+  cv <-cv.glmnet(as.matrix(add_hour_consumtion[,2:49]),as.matrix(add_hour_consumtion[,50]), nfolds = 10, family = "gaussian")
+  
+  #plot(cv)
+  #plot(cv$glmnet.fit)
+  
+cvl<-cv$lambda.min
+  model<-glmnet(as.matrix(add_hour_consumtion[,2:49]),as.matrix(add_hour_consumtion[,50]),alpha = 1,family = "gaussian",lambda =cvl)
+  
+  pdeney2<-predict(model,as.matrix(test_wide[,2:49]))
+  
+   mape<-MAPE(pdeney2,as.matrix(test_widec[,..a]))*100
+  map[b]<-mape
+ 
+}
+
+map<-as.data.frame(map)
+names(map)[1]<-"Mape"
+map
+summary(map)
+```
+
+## Comment on Part D
+
+  At this step we used all hourly consumption values for two days ago and last week same day as our features(48 features). We used penalized regression approaches for modeling and L1 penalty in regression models for each hour. We determined the regularization parameter (i.e. lambda) by performing a 10-fold cross-validation. We created 24 model for each hour. 
+  This step is by far the most reliable one. It gives much more better prediction compared with the others. In the next step at visualization we can see it clearly with my other comments on other parts.
+
+# Task F
+At this part, we will compare the all methods in boxplot.
+
+```{r,message=F,warning=F}
+
+xb46=testwr%>%group_by(Hour)%>%summarise(Mape=MAPE(prediction,Consumption)*100)
+
+graph<-cbind(x48,x168,xb46,Mape_hour,map)
+graph<-graph[,-c(1,3,5,7)]
+names(graph)[c(1,2,3,4,5)]<-c("Naive,48","Naive,168","Part B","Part C", "Part D")
+
+#View(graph)
+boxplot(graph,
+        xlab="Models",
+        ylab="%_MAPE",
+        boxwex=0.6,
+        border = "#0c2461",
+        col = c("#ef5777","#575fcf","#ff5e57","#34e7e4","#0be881"))
+
+
+```
+
+## Comments on Boxplot
+
+
+By looking boxplot all my comments about so far can be seen about to comparison of these 5 models. However I wanted to add another graph to compare naive lag168 and L1 penalized regression model which are looked as the best model in boxplot.
+
+```{r}
+map1<-cbind(map,x168[,1])
+
+plot<-ggplot()+geom_line(data = map1,aes(x=Hour,y=Mape,col="red"))+geom_line(data = x168,aes(x=Hour,y=Mape,col="blue"))+labs(color='Models')  +
+  scale_color_manual(labels = c("lag168 ", "Pen.reg."), values = c("blue", "red"))
+plot
+```
+ 
+
+
