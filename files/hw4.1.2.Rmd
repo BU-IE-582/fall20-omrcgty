@@ -1,0 +1,356 @@
+---
+html_document: null
+author: "Ömer Çağatay Talikacı"
+date: "02.01.2021"
+title: "Homework 4, Ionosphere Data Set"
+output:
+  html_document:
+    toc: true
+---
+
+
+
+
+```{r,message=FALSE,error=FALSE,warning=FALSE}
+
+library(tidyverse)
+library(lubridate)
+#library(MLmetrics)
+library(data.table)
+library(knitr)
+library(stats)
+library(glmnet)
+library(ggplot2)
+library(readxl)
+library(rpart)
+library(rattle)
+library(caret)
+library(randomForest)
+library(gbm)
+library(rmarkdown)
+
+```
+
+
+## Dataset Information:
+
+[Ionosphere Data Set.](https://archive.ics.uci.edu/ml/datasets/ionosphere)
+  "This radar data was collected by a system in Goose Bay, Labrador. This system consists of a phased array of 16 high-frequency antennas with a total transmitted power on the order of 6.4 kilowatts.  ...The targets were free electrons in the ionosphere. "Good" radar returns are those showing evidence of some type of structure in the ionosphere. "Bad" returns are those that do not; their signals pass through the ionosphere."
+  
+  This is a binary classification problem. I separate the data into two parts as training and test. Four different approach will be applied for determined whether the test instances are "good" or not.
+
+# Reading and Organizing Data
+
+
+```{r}
+setwd("C:/Users/ÖmerÇağatay/Desktop/Ie 582/hw4")
+data<-read.table("ionosphere/ionosphere.data",sep = ",")
+bin_ios<-copy(data)
+bin_ios$V35<-ifelse(bin_ios$V35=="g",1,0)
+
+sample<-sample.int(nrow(bin_ios),floor(.70*nrow(bin_ios)),replace = F)
+
+ios_train<-bin_ios[sample, ]
+ios_test<-bin_ios[-sample, ]
+
+```
+
+
+# Penalized Regression Approach
+
+
+ For penalized regression approach I will try two different lambda values determined by cross validation. First one is minimum lambda value, lambda.min. Second is the one which gives the most regularized model, lambda.1se. Both determined by cross validation.
+
+## Determining Lambda Values
+
+```{r}
+
+cvfit=cv.glmnet(as.matrix(ios_train[,1:34]),as.matrix(ios_train[,35]),family='binomial',type.measure='class')
+plot(cvfit)
+print( paste("lambda.min: ",cvfit$lambda.min)) 
+print( paste("lambda.1se: ",cvfit$lambda.1se)) 
+
+```
+
+### Lambda.min
+
+```{r}
+coef(cvfit,s="lambda.min")
+model<-glmnet(as.matrix(ios_train[,1:34]),as.matrix(ios_train[,35]),alpha = 1,family = "binomial",lambda =cvfit$lambda.min)
+ 
+ 
+predict_pra_train<-predict(model,as.matrix(ios_train[,1:34]))
+predict_pra_test<-predict(model,as.matrix(ios_test[,1:34]))
+
+predict_pra_test<-ifelse(predict_pra_test < 0.5,0,1)
+predict_pra_train<-ifelse(predict_pra_train < 0.5,0,1)
+
+print(paste("Ratio of correctly classified instances for train:",mean(predict_pra_train==ios_train$V35)))
+
+print(paste("Ratio of correctly classified instances for test:",mean(predict_pra_test==ios_test$V35)))
+
+```
+
+### Lambda.1se
+
+```{r}
+coef(cvfit,s="lambda.1se")
+
+ model.1se<-glmnet(as.matrix(ios_train[,1:34]),as.matrix(ios_train[,35]),alpha = 1,family = "binomial",lambda =cvfit$lambda.1se)
+ 
+ predict_pra_train.1se<-predict(model.1se,as.matrix(ios_train[,1:34]))
+ predict_pra_test.1se<-predict(model.1se,as.matrix(ios_test[,1:34]))
+
+predict_pra_train.1se<-ifelse(predict_pra_train.1se < 0.5,0,1)
+predict_pra_test.1se<-ifelse(predict_pra_test.1se < 0.5,0,1)
+
+print(paste("Ratio of correctly classified instances for train:",mean(predict_pra_train.1se==ios_train$V35)))
+
+print(paste("Ratio of correctly classified instances for test:",mean(predict_pra_test.1se==ios_test$V35)))
+
+test<-c(mean(predict_pra_test.1se==ios_test$V35),mean(predict_pra_test==ios_test$V35))
+train<-c(mean(predict_pra_train.1se==ios_train$V35),mean(predict_pra_train==ios_train$V35))
+df<-data.frame(test,train)
+row.names(df)[c(1,2)]<-c("lambda.1se","lambda.min")
+
+df
+
+```
+
+## Comments on PRA
+
+ 2 different lambda values tried for classification. Firstly both approach works better on train data. Success rates can be seen above table. If we look at the coefficients we can see that lambda.1se discards the noisy variables and use less features. V1 has the biggest impact at both.
+Success rate for the training data is better for both lambdas. Successively guessed features ratio is around 90% for this approach.
+
+
+# Decision Trees
+
+  At this approach I will change the minbucket value and complexity parameter for observation at the result.The values  Minbucket={1,10} and cp={0.01,0.05,1} will be evaluated.
+
+## Selecting best values for minimal number of observations for tree leaf and complexity parameter.
+
+```{r}
+minbucket<-c(1,5)
+cp<-c(0.001,0.05,1)
+
+for (i in minbucket) {
+  
+  for (k in cp) {
+    
+    class_tree=rpart(V35~.,ios_train,method='class',control = rpart.control(minbucket=i,cp=k))
+    
+    predicted_test=predict(class_tree,ios_test)
+    predicted_train=predict(class_tree,ios_train)
+    
+prediction_test<-ifelse(predicted_test[,1]<predicted_test[,2],1,0)
+
+prediction_train<-ifelse(predicted_train[,1]<predicted_train[,2],1,0)
+
+print(paste("(minbucket,cp):",i,k))
+   print(paste("Success ratio.test:",mean(prediction_test==ios_test$V35)))
+   print(paste("Success ratio.train:",mean(prediction_train==ios_train$V35)))
+    
+  }
+  
+}
+
+```
+ By the above table minbucket=(1,5) and cp=0.05 gives the best result for test data;
+  test:0.94, train:0.89.
+ Further information and visualization for best values:
+ 
+### Minbucket:1, cp=0.05 
+ 
+```{r}
+
+class_tree=rpart(V35~.,ios_train,method='class',control = rpart.control(minbucket =1,cp=0,05))
+fancyRpartPlot(class_tree)
+barplot(class_tree$variable.importance, main="Variables Importance")
+class_tree$variable.importance
+
+plotcp(class_tree)
+
+```
+
+### Minbucket:5, cp=0.05
+
+```{r}
+
+class_tree1=rpart(V35~.,ios_train,method='class',control = rpart.control(minbucket =5,cp=0,05))
+fancyRpartPlot(class_tree1)
+barplot(class_tree1$variable.importance, main="Variables Importance")
+class_tree1$variable.importance
+
+plotcp(class_tree1)
+
+```
+
+
+## Comments on Decision Tree
+
+ Firstly best approach was chosen.(minimal number of observations for tree leaf=(1 or 5)  and complexity parameter=0.01). In general we are not facing with the overfitting and underfitting problem. While the complexity parameter is increasing success rate is decreasing for some examples. For the cp=0.01 selection of minbucket 1 and 5 gives the same (best) results for test data. However selecting 1 as minbucket caused much more work load as it can be seen easily above plots. Overall this approach gives good performance. (94% success at test). By looking the complexity parameter tables we can say that both lambda values shows similar performance on complexity parameter changes.
+
+
+# Random Forest
+
+At this step I changed number of variables randomly sampled as candidates at each split (mtry).
+The values chosen from the set mtry={1,5,10}. Best result is given at mtry equal to 5. 
+
+
+```{r}
+data_df_train=data.frame(ios_train)
+data_df_train$V35=as.factor(data_df_train$V35)
+
+Rf_grid<-expand.grid(mtry=c(1,5,10),
+                     Test_result=0,
+                     Train_result=0)
+
+set.seed(123)
+
+for (i in 1:3) {
+  cla_forest=randomForest(data_df_train[,-ncol(data_df_train)],data_df_train$V35,mtry = Rf_grid$mtry[i])
+  
+    print(paste("For Mtyr:",i))
+    
+    pr_train<-predict(cla_forest,ios_train)
+    
+    pr_test<-predict(cla_forest,ios_test)
+    
+    
+    success_train<-mean(pr_train==ios_train$V35)
+    success_test<-mean(pr_test==ios_test$V35)
+    success_train
+    
+    Rf_grid$Test_result[i]<-success_test
+     Rf_grid$Train_result[i]<-success_train
+    
+     print(cla_forest)
+}
+
+
+
+Rf_grid
+```
+
+```{r}
+
+ cla_forest=randomForest(data_df_train[,-ncol(data_df_train)],data_df_train$V35,mtry = 10)
+
+importance(cla_forest)
+
+```
+## Comments on Random Forest
+
+As we can see from the table best result is given when the number of variables tried at each split is 10. At this selection random forest approach gives good results for both test and train. At train data the success ratio is equal to 1 and it shows 95% accuracy on test data. Most important features for this approach are V5, V3 and V7.
+
+# Stochastic Gradient Boosting
+
+  At this approach I will change depth of the tree, learning rate and number of trees to observe the change at success rate according to this parameters. The values will be chosen from the sets iteration.depth={5,10}, shrinkage={0.01,0,5} and n.trees={13,881,1116}. Evaluation is based on the test data. After tuning data I will observe the relative importance of features and validation error rate on graph.
+
+
+```{r,message=FALSE,error=F,warning=FALSE}
+
+iostrain1<-ios_train[,-2]
+iostest1<-ios_test[,-2]
+
+Sgb_grid <- expand.grid(
+  shrinkage = c(.01, .5),
+  interaction.depth = c(5,10),
+    n_trees =c(13,881,1116),              
+  success_rate_train = 0 ,
+ success_rate_test=0
+)
+
+for(i in 1:nrow(Sgb_grid)) {
+  
+  set.seed(123)
+  gbm.tune <- gbm(
+    formula =V35 ~ .,
+    distribution = "bernoulli",
+    data = iostrain1,
+    n.trees = Sgb_grid$n_trees[i],
+    interaction.depth = Sgb_grid$interaction.depth[i],
+    shrinkage = Sgb_grid$shrinkage[i],
+    cv.folds = 10,
+    train.fraction = .75,
+    n.cores = NULL,
+    verbose = FALSE
+  )
+  
+ a<-predict(gbm.tune,iostest1)
+ b<-predict(gbm.tune,iostrain1)
+ a_test<-ifelse(a<0.5,0,1)
+ b_train<-ifelse(b<0.5,0,1)
+  Sgb_grid$success_rate_test[i] <- mean(a_test==iostest1$V35)
+  Sgb_grid$success_rate_train[i]<-mean(b_train==iostrain1$V35)
+}
+
+Sgb_grid<-Sgb_grid%>%arrange(desc(success_rate_test))
+View(Sgb_grid)
+
+
+Sgb_grid
+
+```
+
+ The best result for test data is observed when shrinkage=0.01, depth=10 and number of trees=881.
+In order to show valid error change and relative influence of features I will do the same procedure with best selection.
+ 
+
+```{r}
+
+
+set.seed(123)
+
+gbm.fit <- gbm(
+  formula = V35 ~ .,
+  distribution = "bernoulli",
+  data = iostrain1,
+  n.trees = 881,
+  interaction.depth = 5,
+  shrinkage = 0.01,
+  cv.folds = 10,
+  train.fraction = .75,
+  n.cores = NULL,
+  verbose = FALSE
+  )  
+
+gbm.perf(gbm.fit,method = "cv")
+relative_inf<-as.data.frame(relative.influence(gbm.fit))
+relative_inf<-relative_inf%>%arrange(desc(relative_inf[,1]))
+
+relative_inf
+View(relative_inf)
+
+```
+
+## Comments on SGB
+
+ For this step, majority of the train performance is better than test performance. Overall this approach gives a good approximation on binary classification problem.(~95%) I tried randomly selected variables at tuning step. If tuning step procedure would be done in more systematic way I believe this approach would give better results. At the last plot black line shows train error and red line shows validation error. Blue line shows optimal number of iteration. So we can say that after the blue line there is overfitting problem. At this step V27 has the most impact on result. (V5, V7 ,V3 follows. )
+
+
+# Comparison and last Comments
+
+
+```{r}
+
+results<-data.frame("lambda.min"=c(0.8396,0.9306),
+                 "lambda.1se"=c(0.8584,0.8775),
+                 "Decision Tress"=c(0.9150,0.9224),
+                 "Random Forest"=c(0.9622,1.000),
+                 "SGB"=c(0.9716,0.9632)
+                 )
+
+View(results)
+rownames(results)<-c("test","train")
+
+kable(results,caption = "Succesively Guessed Classes Ratio")
+```
+
+  Stochastic Gradient Boosting is the one which gives the best results on test data. Further comparison can be made at above table on success ratio. The most important features for different approaches shows similarity except PRA. Cross validation error rate is consistent with my evaluation method in general. Test and train result shows similar result at all approach but PRA with lambda.min. There is an overfitting problem at this step. 
+
+
+
+
+
+
