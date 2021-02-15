@@ -1,0 +1,233 @@
+---
+html_document: null
+author: "Ömer Çağatay Talikacı, İrem Arıca, Ezgi Oral"
+date: "12.02.2021"
+title: "Data Miners - Project Report"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries,echo=FALSE,results="hide" ,message=FALSE}
+library(readr)
+library(plyr)
+library(corrplot)
+library(glmnet)
+#Classification And Regression Training
+library(caret)
+#RANDOM FOREST
+library(randomForest)
+library(e1071)
+#Boosted Regression
+library(gbm)
+library(xgboost)
+#Decision Tree
+library(rpart)
+library(rpart.plot)
+library(rattle)
+#Classification and cluster
+library(class)
+library(cluster)
+library(OneR)
+library(ROSE)
+library(kableExtra)
+```
+```{r, echo=FALSE }
+IE582_Fall20_ProjectTrain <- read.csv("C:/Users/Ezgi/Desktop/IE582_Fall20_ProjectTrain.csv")
+```
+# Introduction
+
+
+### Problem Description
+
+In this project, we are given a train data and a test data from an unknown dataset. Our goal in this project is to build a binary classification model. We are asked to maximize two performance measures: Balanced Error Rate (BER) and Area under the ROC curve (AUC). 
+
+It is important to mention that, there is a class imbalance in the train data. Therefore, the class imbalance problem must be achieved in this project.
+
+
+### Descriptive Analysis
+
+In the dataset, there are 60 features and they are all numeric. When we analyze the train data we see that in every sample, features x50 and x52 have only a single value, 0. In the test data, we see that in every sample, features x37, x52 and x57 have only a single value, 0. Furthermore, at the features x36 and x42, we are observing some unexpected leaps. There are no missing values. Most of the features have binary values.
+
+
+### About the Proposed Approach
+
+Our proposed approach uses ovun.sample function in the ROSE library to overcome the class imbalance problem. We do not apply scaling or clustering. As a model, we use the Random Forest method. We try to tune ntree and nodesize parameters by making extensive simulations and by using 10 folds cross-validation. Then we pick the ntree and nodesize values from the best performance. Finally, we set those parameter values into the Random Forest model again and make a prediction. In our best prediction, our total score was 0.897 where the AUC was 0.927 and BER was 0.87.
+
+
+
+# Related Literature
+
+In [1] it is stated that the performance of the learning system can be achieved by some balancing techniques. Ten methods are examined and three of them are proposed. They used both under and oversampling methods and practiced several UCI datasets to compare the performances of the balancing techniques. They used the AUC metric as a performance measure. Furthermore, they explained each method in detail and analyzed each method in every dataset that they chose. They recommended Smote and Tomek or Smote and ENN for imbalanced data sets. 
+
+In the article [2], there are several ways for overcoming class imbalance. These approaches are SMOTE (Synthetic minority oversampling technique), Random Under Sampling (RUS) and Random Over Sampling (ROS). In the SMOTE method, a new dataset is created by distributing the observations equally for the minority class and the majority class. By creating a synthetic data, the number of observations of the minority class is increased. Thus, the predictive values for the minority class give more accurate results. In the RUS technique, the aim is to reduce the number of observations of the majority class. This is done by selecting random samples from the majority class equal to the minority class. In the ROS technique, it is aimed to reproduce the observations in the minority class. In order to apply this technique, the original data are taken exactly and additionally random selections are made from minority class observations until the number of observations belonging to each class is equalized.
+
+In [3], they studied the clustering algorithm with the class imbalanced dataset. K-means clustering algorithm is used and applied. They showed that class imbalance in the dataset affects efficiency, performance  and classification learning significantly.
+
+Undersampling techniques with K-Medoids based technique is examined in [4]. They proposed a CLARA (Clustering Large Applications) algorithm which takes the medoids centers into account and tries to achieve the class imbalance problem. They used AUC metric for performance evaluation. They found out that their CLARA algorithm is very efficient to handle the class imbalance problem.
+
+
+
+
+
+# Approaches
+
+General comments on every approach:
+
+- We exclude the features x37, x50, x52 and x57 from both training and test data since they consist of only a single value.
+- We used 70% of the training data to create our model and used the rest for the test. 
+- We use 10 folds cross-validation.
+
+First, without overcoming the class imbalance, we made models by using decision tree, random forest, penalized regression and gradient boosting models. We used 10 folds cross-validation and made extensive simulations where we change multiple parameters for each approach. We used four different methods: penalized regression approach (PRA), decision tree, random forest and gradient boosting model (GBM). In decision tree model we changed the cp and minbucket parameters. In the random forest model, we tried to tune the ntree, nodesize and mtry parameters.  Finally, for the gradient boosting model, we tried to tune the n.trees, interaction.depth and shrinkage parameters.  Maximum score we got was 0.846 where the AUC was 0.924 and BER was 0.768. We got this result by using Random Forest model. Here we observe that the AUC performance is good however the BER is low. 
+
+
+### Scaling
+
+Then we scaled the features, and again tried decision tree, random forest and GBM by tuning the same parameters used in without overcoming the class imbalance approach. Our score was 0.766 where the AUC was 0.792 and BER was 0.74. We achieved this score with random forest approach by tuning the ntree, nodesize and mtry parameters. We observed that scaling affected our predictions in a bad way. Therefore, we did not prefer to use scaling in our other approaches.
+
+
+### Class Imbalance
+
+Afterward, we tried to overcome the class imbalance problem. Since the train data have 509 instances of "b", first we wanted to use all 509 instances of "b" and choose 509 instances from "a" randomly like in RUS method in [[5](https://www.rdocumentation.org/packages/DMwR/versions/0.4.1/topics/SMOTE)]. So, out of 2073 samples, we were down to 1018 samples. We used 10 folds cross-validation. We used four different methods: PRA, decision tree, random forest and GBM. In PRA, we tuned the lambda parameter. In the decision tree model, we tried to tune the cp and the minbucket parameter. In the random forest model, we tried to tune the ntree, nodesize and mtry parameters. Finally, for GBM, we tried to tune the n.trees, interaction.depth and shrinkage parameters. Maximum score we got was 0.86 where the AUC was 0.89 and BER was 0.82. We got this result by using PRA model. Here we observe that the AUC performance is good however the BER is not very good. 
+
+Then after some research, we found the ovun.sample function in ROSE library [[6](https://www.rdocumentation.org/packages/ROSE/versions/0.0-3/topics/ovun.sample)]. In ovun.sample function it is possible to use 3 methods: "under" for undersampling the majority class, "over" for oversampling the minority class and "both" for undersampling the majority class, and oversampling the minority class together. We are also allowed to change the p parameter which represents the probability of resampling from the rare class.
+
+First, we used the "under" method with the seed value of 1 and p as 0.5. Then we performed 4 models mentioned above. Maximum score we got was 0.873 where the AUC was 0.926 and BER was 0.82. We got this result by using Random Forest model. Here we observe that the AUC and BER performances are good.
+
+After, we used the "over" method with the seed value of 1 and p as 0.5. Then we performed 4 models mentioned above. Maximum score we got was 0.885 where the AUC was 0.928 and BER was 0.84. We got this result by using Random Forest model. Here we observe that the AUC and BER performances are good.
+
+Then, we used the "both" method with the seed value of 1 and p as 0.5. Then we performed 4 models mentioned above. Maximum score we got was 0.897 where the AUC was 0.927 and BER was 0.87. We got this result by using Random Forest model. Here we observe that the AUC and BER performances are both good.
+
+After obtaining the best prediction by using ovun.sample, we changed the p and seed parameters in "both" method. When we changed the seed parameter to 2 and our score was 0.875 where the AUC was 0.91 and BER was 0.834. When we changed the p parameter between 0.45 and 0.55, our best score was 0.866 where the AUC was 0.91 and the BER was 0.819.
+
+Another method we have used was ubBalance function in unbalanced library. Parameters and possible methods for the ubBalance function are explained in [[7](https://www.rdocumentation.org/packages/unbalanced/versions/2.0/topics/ubBalance)]. We applied this function with ubCNN method. Then we created a model using random forest. After tuning the ntree and nodesize parameters, our best score was 0.875 where the AUC was 0.915 and BER was 0.836.
+
+As an another approach for dealing with class imbalance, we tried random oversampling. At first, we included all 1565 data points of class "a" and 509 data points of class "b". Then, we select 1056 data points from class "b" with using random sampling with replacement. In the end, for creating training and test sets, we have a dataset with 3130 instances that contains equal number of observations from each class. 
+
+With this sampling approach, we tried penalized regression, decision tree, random forest and gradient boosting models. 10-folds cross-validation is used in all models for parameter tuning. Decision tree models showed the weakest performance for prediction. In the penalized regression approach, lambda.min and lambda.1se parameters are tuned and lambda.min is used while training the model. For the random forest models, mtry, ntree and nodesize is tuned for obtaining better results. For both penalized regression and random forest models, AUC value was 0.91 and BER value was 0.84 in average. Gradient boosting model showed the best performance with this training data. With the use of train function, interaction.depth, shrinkage and n.trees parameters are tuned. AUC value was 0.924 and BER value was 0.862. The overall score of our prediction with gradient boosting model was 0.893.
+
+In addition, we tried sampling with using SMOTE function from the "DMwR" package [[5](https://www.rdocumentation.org/packages/DMwR/versions/0.4.1/topics/SMOTE)]. However, it did not give better results compared to other sampling methods. BER value of the predictions regarding the use of SMOTE varied between 0.79 and 0.83.
+
+We have also tried support vector machine (SVM) approach, however our test results were around 0.65 therefore we did not make any submission for this approach. The possible reasons we got a bad performance can be due to the wrong parameter assignment or the SVM method may not be suitable for this type of dataset.
+
+
+### Clustering
+
+We also tried clustering to increase our score. We used K-Medoids and K-means clustering algorithms. We tried 5 different parameters for k, k= {3,5,7,9,11}. During our tests from the train data, we applied decision tree and random forest. In the decision tree model, we tried to tune the cp and the minbucket parameter. In the random forest model, we tried to tune the ntree and nodesize parameters. The maximum accuracy we have achieved was 0.70. We got the maximum accuracy when we used the K-Medoids clustering algorithm with random forest model. Therefore, since the maximum accuracy was not promising, we did not make any submissions with a clustering approach. 
+
+
+### Post-Processing
+
+One of our approaches to this problem is not to improve the model but improve the predictions by post-processing. The assumption was that: If the class of an instance in the train data is guessed wrong, it is likely the same model predicts the most similar instance to that instance in test data wrong again. However, there are two main problems in the practice of this idea; 
+
+1)How to measure the similarity?
+
+2)Let's say we determine the ones which are truly the most "similar" ones to the incorrectly guessed instances in train data. How should we determine the new probability values for the classes of it? 
+
+To check this assumption after creating our model on the balanced data by ovun.sample function, we determined the instances that are predicted incorrectly in the train data. Then we used the distance as our similarity measure under different metrics(“osa”,”hamming”,”lv”,”jw”,…) from the stringdist package [[8](https://www.rdocumentation.org/packages/stringdist/versions/0.9.4.6/topics/stringdist)]. To determine the metric, we checked the differences of the predicted probabilities of the incorrectly guessed train instances and corresponding test rows. Then under a certain limitation of these differences, we looked at the percentage of the duals (train-corresponding test) which ensure this limitation, to all duals under different metrics. For the limitation mentioned above, we choose 0.05 as the max difference. To clarify this process we shared all the steps in [here](https://bu-ie-582.github.io/fall20-omrcgty/files/project_dist.html) for a post-processing of a random forest method example. 
+
+
+### Best Approach
+
+In our best approach, to achieve the class imbalance problem, we used ovun.sample function. We set the p parameter as "0.5", we chose the method as "both" and used the seed value as "1". We did not scale the train data and we did not use clustering. To model the train data, we used Random Forest method.
+In the randomForest function, the ntree parameter was 308 and nodesize was 3. We left the other parameters in the randomForest function as default. We did not perform post-processing.
+
+With our best approach, the score we obtained was 0.897 where the AUC was 0.927 and BER was 0.87.
+
+
+# Results
+
+In our analysis, we found out that the class imbalance technique affects the BER performance more than the AUC performance. In most of the analysis, AUC was between 0.90-0.93. So we set our goal to maximize the BER performance. We tried to maximize the BER by trying different class imbalance methods.
+
+Another observation we had was about the mtry parameter in the random forest method. We observe that using the default value of the mtry parameter in random forest did not affect our performances, in other words, we did not observe a significant change in our performance when we change the mtry parameter.
+
+The results of every approach are given in the Approaches part. When we compare all the results, we see that using ovun.sample function by selecting the "both" method and setting p as 0.5 and seed as 1, we have achieved the best performance. As a model, we see that random forest performed well in most of the approaches. We obtained the best prediction by using random forest model.
+
+In our best prediction, our total score was 0.897 where the AUC was 0.927 and BER was 0.87.
+
+It is important to note that GBM and random forest models performed similarly in general.
+
+During our simulations, we also noticed that making extensive simulations helps to increase the prediction performances. In other words, it is important to try tuning the parameters by small step sizes.
+It is important to highlight that class imbalance techniques, train and test data separation and classification model operates randomly. Therefore, the prediction probabilities change in every trial for the same parameters.
+
+Below, we make a table to summarize our best scores in every model. We also present the balancing method we use during that approach.
+
+
+```{r, echo = FALSE}
+models<-vector()
+models<-rbind("","PRA", "Decision Tree", "Random Forest", "GBM")
+columns<-cbind("","AUC","BER","Score","Balancing Method")
+
+matrx <- matrix(0,5,5)
+matrx[,1]<-models
+matrx[1,]<-columns
+
+matrx[2,2]<-0.912
+matrx[2,3]<-0.848
+matrx[2,4]<-0.88
+matrx[3,2]<-0.88
+matrx[3,3]<-0.824
+matrx[3,4]<-0.853
+matrx[4,2]<-0.927
+matrx[4,3]<-0.87
+matrx[4,4]<-0.897
+matrx[5,2]<-0.924
+matrx[5,3]<-0.86
+matrx[5,4]<-0.893
+
+matrx[2,5]<- "ROS"
+matrx[3,5]<- "SMOTE"
+matrx[4,5]<- "ovun.sample(both)"
+matrx[5,5]<- "ROS"
+
+
+dt <- matrx
+dt %>%
+  kbl(caption = "Best Scores for Different Models") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+# Conclusions and Future Work
+
+In this project, our goal was to build a binary classification model by maximizing both AUC and BER parameters as well as handling the class imbalance problem. We tried multiple methods and multiple techniques to overcome the class imbalance problem. During our tests, we found out that class imbalance affects the BER performance significantly. Despite the fact that we obtained the best result from Random forest approach, GBM also gave quite a similar result. The best method to overcome the class imbalance problem was ovun.sample function under "both" method. However, it is important to mention that ROS method had also performed well.
+
+
+As future work, we could try different techniques or libraries for class imbalance problem, we could use neural networks. We could extend clustering approaches.
+
+Moreover, for the post-processing part, one can focus on determining the most "similar" vectors between the train and the test data. Defining similarity under a different context, data and models could be a good research topic. 
+
+
+After that, we need to decide how to determine the new probabilities for each instance that we assumed predicted wrong. At this point making a comparison with another prediction by another model and changing values accordingly can be a suggestion.
+
+
+
+# Code
+
+Code for the proposed approach can be reached from this [link.](https://github.com/BU-IE-582/fall20-EzgiOralBoun/tree/master/files/Project/ProjectFinalCode.R)
+
+
+
+# References
+
+[1] BATISTA, Gustavo EAPA; PRATI, Ronaldo C.; MONARD, Maria Carolina. A study of the behavior of several methods for balancing machine learning training data. ACM SIGKDD explorations newsletter, 2004, 6.1: 20-29.
+
+[2] RASHU, Raisul Islam; HAQ, Naheena; RAHMAN, Rashedur M. Data mining approaches to predict final grade by overcoming class imbalance problem. In: 2014 17th International Conference on Computer and Information Technology (ICCIT). IEEE, 2014. p. 14-19.
+
+[3] XUAN, Li; ZHIGANG, Chen; FAN, Yang. Exploring of clustering algorithm on class-imbalanced data. In: 2013 8th International Conference on Computer Science & Education. IEEE, 2013. p. 89-93.
+
+[4] NUGRAHA, Wahyu; MAULANA, Muhammad Sony; SASONGKO, Agung. Clustering Based Undersampling for Handling Class Imbalance in C4. 5 Classification Algorithm. In: Journal of Physics: Conference Series. IOP Publishing, 2020. p. 012014.
+
+[5] "SMOTE," function | R Documentation. [Online]. Available: 
+[https://www.rdocumentation.org/packages/DMwR/versions/0.4.1/topics/SMOTE](https://www.rdocumentation.org/packages/DMwR/versions/0.4.1/topics/SMOTE). [Accessed: 14-Feb-2021]. 
+
+[6] "ROSE," function | R Documentation. [Online]. Available:  [https://www.rdocumentation.org/packages/ROSE/versions/0.0-3/topics/ovun.sample](https://www.rdocumentation.org/packages/ROSE/versions/0.0-3/topics/ovun.sample). [Accessed: 14-Feb-2021]. 
+
+[7] "unbalanced," function | R Documentation. [Online]. Available: 
+[https://www.rdocumentation.org/packages/unbalanced/versions/2.0/topics/ubBalance](https://www.rdocumentation.org/packages/unbalanced/versions/2.0/topics/ubBalance). [Accessed: 14-Feb-2021]. 
+
+
+[8] "stringdist," function | R Documentation. [Online]. Available: [https://www.rdocumentation.org/packages/stringdist/versions/0.9.4.6/topics/stringdist](https://www.rdocumentation.org/packages/stringdist/versions/0.9.4.6/topics/stringdist). [Accessed: 14-Feb-2021]. 
