@@ -17,11 +17,10 @@
 [Here](files/h3.html) is my homework 3. [Codes](https://github.com/BU-IE-582/fall20-omrcgty/blob/gh-pages/files/h3.Rmd).
 
 ## Homework 4 (February 1, 2021) 
-    Binary classification problem on Inosphere Data Set. 
 
-   [Report](files/hw4.html)
+    Binary classification Problem on Inosphere Data Set. [Report](files/hw4.html), [Codes](https://github.com/BU-IE-582/fall20-omrcgty/blob/gh-pages/files/hw4.1.2.Rmd)
 
-   [Codes](https://github.com/BU-IE-582/fall20-omrcgty/blob/gh-pages/files/hw4.1.2.Rmd)
+  
 
 ## Project
 
