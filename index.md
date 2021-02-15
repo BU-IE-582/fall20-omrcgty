@@ -23,7 +23,7 @@
    [Report](files/hw4.1.2.html)
    [Codes](https://github.com/BU-IE-582/fall20-omrcgty/blob/gh-pages/files/hw4.1.2.Rmd)
 
-## Final
+## Project
 
 Project [Report](files/ProjectReport_Final.html)
 Post-Processing Example[Here](files/project_dist.html)
