@@ -23,9 +23,9 @@ Binary classification Problem on Inosphere Data Set.
 [Codes](https://github.com/BU-IE-582/fall20-omrcgty/blob/gh-pages/files/hw4.1.2.Rmd)
 
 
-
 ## Project
 
 Project [Report](files/ProjectReport_Final.html)
+[Codes](https://github.com/BU-IE-582/fall20-omrcgty/blob/gh-pages/files/ProjectFinalCode.R)
 
 Post-Processing [Example](files/project_dist.html)
